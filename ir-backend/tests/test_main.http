@@ -1,0 +1,93 @@
+# Test your FastAPI endpoints
+###
+GET http://127.0.0.1:8000/
+Accept: application/json
+
+###
+GET http://127.0.0.1:8000/hello/User
+Accept: application/json
+
+###
+GET http://127.0.0.1:8000/subject
+#Accept: application/json
+
+###
+GET http://127.0.0.1:8000/sample/one
+
+###
+GET http://127.0.0.1:8000/sample/two
+
+###
+GET http://127.0.0.1:8000/sample/three
+
+###
+GET http://127.0.0.1:8000/class_select/QPOJFICHKVJB
+
+###
+GET  http://127.0.0.1:8000/hello
+
+###
+GET http://127.0.0.1:8000/student/grade
+
+###
+GET http://127.0.0.1:8000/student/grade/tFIbviXWwI9KASddT6OFUQ==
+
+###
+GET http://127.0.0.1:8000/student/subject/データマイニングと機械学習
+
+###
+GET http://127.0.0.1:8000/student/grade/tFIbviXWwI9KASddT6OFUQ==
+
+###
+GET http://127.0.0.1:8000/student/subject_calc/データマイニングと機械学習
+
+###
+GET http://127.0.0.1:8000/student/subject_calc_par_year/データマイニングと機械学習
+
+###
+GET http://127.0.0.1:8000/students
+
+###
+GET http://127.0.0.1:8000/class_select/test
+
+###
+GET http://127.0.0.1:8000/class_select/QPOJFICHKVJB
+
+###
+GET http://127.0.0.1:8000/sample/four
+
+###
+GET http://127.0.0.1:8000/grade/gpa_graph/B
+
+###
+GET http://127.0.0.1:8000/grade/gpa_stat/B
+
+###
+GET http://127.0.0.1:8000/student/test
+
+###
+GET http://127.0.0.1:8000/students
+
+###
+GET http://127.0.0.1:8000/questionnaire/top/grid
+
+###
+GET http://127.0.0.1:8000/student/test1
+
+###
+GET http://127.0.0.1:8000/users/info
+
+###
+GET http://127.0.0.1:8000/student/value_test
+
+###
+GET http://127.0.0.1:8000/grade/gpa_graph/133J6
+
+###
+GET http://127.0.0.1:8000/grade/target/10zqg2/UJQ2a6
+
+###
+GET http://127.0.0.1:8000/grade/subject/LFP4EKZR4lz3RZd0nNTEXw==
+
+###
+GET http://127.0.0.1:8000/grade/helloworld
