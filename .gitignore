@@ -139,3 +139,5 @@ error-screenshots/
 
 # Note: src/main/resources/application.properties is intentionally NOT ignored
 # as it is a configuration file that should be version controlled
+
+

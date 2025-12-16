@@ -10,3 +10,4 @@ public interface HelloService {
     @GetExchange("/helloworld")
     TableData<HelloworldGrade> getGradeGraph();
 }
+
