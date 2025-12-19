@@ -6,10 +6,11 @@ from typing import Optional
 
 router = APIRouter()
 
+
 @router.get("/grade/helloworld")
 async def helloworld_grade(
-    lecture_name: Optional[str] = "インターネットとウェブテクノロジー",
-    db_connection=Depends(irweb_data)
+        lecture_name: Optional[str] = "インターネットとウェブテクノロジー",
+        db_connection=Depends(irweb_data)
 ):
     # lecture_nameにデフォルト値を設定しました。
     # これにより、?lecture_name=... を付けずにアクセスしても422エラーにならず動作します。
