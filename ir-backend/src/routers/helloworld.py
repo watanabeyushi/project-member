@@ -76,3 +76,59 @@ async def helloworld_grade(
     except Exception as e:
         # データの加工中に発生した予期せぬエラーを捕捉します。
         return {"error": "Processing failed", "detail": str(e)}
+
+
+@router.get("/grade/master_list")
+async def get_master_list(db_connection=Depends(irweb_data)):
+    # 1. データベースから全件取得を試みます
+    try:
+        # 全データを取得します（where_andを指定しないことで全件抽出）
+        df = await db_connection.query("grade_new",
+                                       "target_grade",
+                                       "available_semester",
+                                       "target_department",
+                                       "lecture_name")
+    except Exception as e:
+        return {"error": "Query failed", "detail": str(e)}
+
+    # 2. データが空の場合のチェック
+    if df is None or df.empty:
+        return {"data": {}, "message": "データベースにレコードが存在しません"}
+
+    # 3. リスト作成のための汎用的な整形関数
+    def extract_unique_list(series, is_numeric=False):
+        # 欠損値を除去し、すべて文字列に変換します
+        valid_data = series.dropna().astype(str).unique()
+
+        processed_list = []
+        for item in valid_data:
+            if is_numeric:
+                # 数値を含む文字列（"1.0"など）を整数文字列（"1"）に整形します
+                try:
+                    num = float(item)
+                    # NaNや無限大を除外して整数化
+                    if pd.notnull(num):
+                        processed_list.append(str(int(num)))
+                except ValueError:
+                    continue
+            else:
+                # 文字列データから空文字や "nan" を除外
+                if item.strip() and item.lower() != "nan":
+                    processed_list.append(item.strip())
+
+        # 重複を排除して昇順に並べ替えます
+        return sorted(list(set(processed_list)))
+
+    try:
+        # 4. 各項目のリストを生成
+        result = {
+            "target_grades": extract_unique_list(df["target_grade"], is_numeric=True),
+            "available_semesters": extract_unique_list(df["available_semester"], is_numeric=True),
+            "target_departments": extract_unique_list(df["target_department"]),
+            "lecture_names": extract_unique_list(df["lecture_name"])
+        }
+
+        return {"data": result}
+
+    except Exception as e:
+        return {"error": "Processing failed", "detail": str(e)}
