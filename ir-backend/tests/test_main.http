@@ -91,3 +91,6 @@ GET http://127.0.0.1:8000/grade/subject/LFP4EKZR4lz3RZd0nNTEXw==
 
 ###
 GET http://127.0.0.1:8000/grade/helloworld
+
+###
+GET http://127.0.0.1:8000/grade/master_list
