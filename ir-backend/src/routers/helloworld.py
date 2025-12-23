@@ -9,6 +9,7 @@ router = APIRouter()
 
 @router.get("/grade/helloworld")
 async def helloworld_grade(
+
         lecture_name: Optional[str] = "インターネットとウェブテクノロジー",
         db_connection=Depends(irweb_data)
 ):
@@ -87,7 +88,10 @@ async def get_master_list(db_connection=Depends(irweb_data)):
                                        "target_grade",
                                        "available_semester",
                                        "target_department",
-                                       "lecture_name")
+                                       "lecture_name",
+                                       "lecture_teacher",
+                                       "number_credits_course"
+                                       )
     except Exception as e:
         return {"error": "Query failed", "detail": str(e)}
 
@@ -125,7 +129,10 @@ async def get_master_list(db_connection=Depends(irweb_data)):
             "target_grades": extract_unique_list(df["target_grade"], is_numeric=True),
             "available_semesters": extract_unique_list(df["available_semester"], is_numeric=True),
             "target_departments": extract_unique_list(df["target_department"]),
-            "lecture_names": extract_unique_list(df["lecture_name"])
+            "lecture_names": extract_unique_list(df["lecture_name"]),
+            "lecture_teachers": extract_unique_list(df["lecture_teacher"]),
+            "number_credits_courses": extract_unique_list(df["number_credits_course"], is_numeric=True)
+
         }
 
         return {"data": result}

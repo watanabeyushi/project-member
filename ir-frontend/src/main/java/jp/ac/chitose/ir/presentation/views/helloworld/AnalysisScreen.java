@@ -1,94 +1,123 @@
 package jp.ac.chitose.ir.presentation.views.helloworld;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.H2;
-import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.component.textfield.TextArea;
-import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 import jakarta.annotation.security.PermitAll;
 import jp.ac.chitose.ir.application.service.helloworld.HelloService;
-import jp.ac.chitose.ir.application.service.helloworld.HelloworldGrade;
 import jp.ac.chitose.ir.presentation.component.MainLayout;
-import jp.ac.chitose.ir.presentation.component.graph.GRAPH_TYPE;
-import jp.ac.chitose.ir.presentation.component.graph.Graph;
-import jp.ac.chitose.ir.presentation.component.graph.GraphSeries;
-import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
-import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
-import com.vaadin.flow.component.details.Details;
-import java.util.List; // List<HelloworldGrade>のために必要
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-@PageTitle("Hello World")
+@PageTitle("Analysis Screen")
 @Route(value = "AnalysisScreen", layout = MainLayout.class)
 @PermitAll
-public class AnalysisScreen extends VerticalLayout {
+public class AnalysisScreen extends VerticalLayout implements HasUrlParameter<String> {
 
-    private HelloService helloService;
-    private VerticalLayout graphContainer; // グラフを格納するためのコンテナ
+    private final HelloService helloService;
+    private final Grid<LectureData> grid = new Grid<>(LectureData.class, false);
+    private final VerticalLayout scrollableContent = new VerticalLayout();
+
+    // APIレスポンス用のDTOクラス
+    static class SearchResponse {
+        public List<LectureData> results;
+    }
+
+    static class LectureData {
+        @JsonProperty("lecture_name")
+        public String lectureName;
+        @JsonProperty("lecture_teacher")
+        public String lectureTeacher;
+        @JsonProperty("number_credits_course")
+        public String credits;
+    }
 
     public AnalysisScreen(HelloService helloService) {
         this.helloService = helloService;
 
-        // 1. 固定表示する見出し群を設定します。
-        H1 title = new H1("CIST-IR");
-        title.getStyle().set("position", "fixed");
-        title.getStyle().set("top", "100px"); // 数値を調整しました
-        title.getStyle().set("left", "20px");
-        title.getStyle().set("z-index", "10");
+        setupStaticLayout();
+        setupGrid();
 
-        H2 title2 = new H2("成績と他要因の関係");
-        title2.getStyle().set("position", "fixed");
-        title2.getStyle().set("top", "150px");
-        title2.getStyle().set("left", "20px");
-        title2.getStyle().set("z-index", "10");
+        // 戻るボタン
+        Button backButton = new Button("戻る", e -> getUI().ifPresent(ui -> ui.navigate("hello")));
+        backButton.getStyle().set("position", "fixed").set("bottom", "20px").set("left", "20px").set("z-index", "10");
 
-        H2 title3 = new H2("授業名：●●●　教員：●●○●　単位数：〇単位");
-        title3.getStyle().set("position", "fixed");
-        title3.getStyle().set("top", "150px");
-        title3.getStyle().set("left", "400px");
-        title3.getStyle().set("z-index", "10");
-
-        // 2. スクロール可能なコンテンツ領域を作成します。
-        // ここでは VerticalLayout をコンテナとして使用します。
-        VerticalLayout scrollableContent = new VerticalLayout();
-
-        // スクロール領域の位置とサイズを固定します。
-        // 固定見出し（150px程度）の下から開始するように設定します。
-        scrollableContent.getStyle().set("position", "absolute");
-        scrollableContent.getStyle().set("top", "200px"); // 見出しと重ならない開始位置
-        scrollableContent.getStyle().set("left", "0");
-        scrollableContent.getStyle().set("bottom", "80px"); // 戻るボタンの領域を確保
-        scrollableContent.getStyle().set("overflow-y", "auto"); // 縦方向にスクロール可能にする
-        scrollableContent.setWidthFull();
-
-        // スクロールしたい内容（title4やグラフなど）はこのコンテナに追加します。
-        H3 title4 = new H3("ここにグラフを挿入");
-        // テスト用に長いテキストを追加してスクロールを確認できるようにします。
-        for (int i = 0; i < 20; i++) {
-            scrollableContent.add(new Paragraph("データ行 " + i));
-        }
-        scrollableContent.add(title4);
-
-        // 3. 戻るボタンの設定（変更なし）
-        Button sampleButton = new Button("戻る");
-        sampleButton.getStyle().set("position", "fixed");
-        sampleButton.getStyle().set("bottom", "20px");
-        sampleButton.getStyle().set("left", "20px");
-        sampleButton.getStyle().set("z-index", "10");
-
-        sampleButton.addClickListener(event -> {
-            getUI().ifPresent(ui -> ui.navigate("hello"));
-        });
-
-        // 4. すべてをメインレイアウトに追加します。
-        add(title, title2, title3, scrollableContent, sampleButton);
+        add(scrollableContent, backButton);
     }
 
+    private void setupStaticLayout() {
+        H1 title = new H1("CIST-IR");
+        title.getStyle().set("position", "fixed").set("top", "100px").set("left", "20px").set("z-index", "10");
 
+        H2 title2 = new H2("成績と他要因の関係");
+        title2.getStyle().set("position", "fixed").set("top", "150px").set("left", "20px").set("z-index", "10");
+
+        scrollableContent.getStyle().set("position", "absolute").set("top", "220px").set("bottom", "80px").set("overflow-y", "auto");
+        scrollableContent.setWidthFull();
+
+        add(title, title2);
+    }
+
+    private void setupGrid() {
+        // グリッド（表）のカラム設定を行います
+        grid.addColumn(d -> d.lectureName).setHeader("授業名").setFlexGrow(1);
+        grid.addColumn(d -> d.lectureTeacher).setHeader("教員").setFlexGrow(1);
+        grid.addColumn(d -> d.credits).setHeader("単位数").setWidth("100px");
+        grid.setAllRowsVisible(true); // スクロール領域内で全件表示させる設定
+
+        scrollableContent.add(grid);
+    }
+
+    @Override
+    public void setParameter(BeforeEvent event, @OptionalParameter String parameter) {
+        // URLのパラメータを取得します
+        Location location = event.getLocation();
+        QueryParameters queryParameters = location.getQueryParameters();
+        Map<String, List<String>> parametersMap = queryParameters.getParameters();
+
+        String grade = parametersMap.getOrDefault("grade", Collections.singletonList("")).get(0);
+        String semester = parametersMap.getOrDefault("semester", Collections.singletonList("")).get(0);
+        String dept = parametersMap.getOrDefault("dept", Collections.singletonList("")).get(0);
+
+        if (!grade.isEmpty()) {
+            fetchLecturesFromApi(grade, semester, dept);
+        }
+    }
+
+    private void fetchLecturesFromApi(String grade, String semester, String dept) {
+        try {
+            // FastAPIの検索エンドポイントへリクエストを送信します
+            // URLエンコードを考慮し、パラメータを連結します
+            String url = String.format("http://127.0.0.1:8000/grade/search?target_grade=%s&available_semester=%s&target_department=%s",
+                    grade, semester, dept.replace(" ", "%20"));
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                ObjectMapper mapper = new ObjectMapper();
+                mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+                SearchResponse result = mapper.readValue(response.body(), SearchResponse.class);
+
+                // 取得したデータをグリッドに反映します
+                if (result.results != null) {
+                    grid.setItems(result.results);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
