@@ -64,7 +64,7 @@ public class HelloWorldView extends VerticalLayout {
         grade.setLabel("学年を選択");
         grade.getStyle().set("position", "fixed").set("top", "250px").set("left", "20px");
 
-        // semesterのラベル設定と配置処理を削除しました
+        // semesterのラベル設定と配置処理を削除しました<-
 
         department.setLabel("学科を選択");
         // 配置場所を上に詰めました（340pxへ変更）
