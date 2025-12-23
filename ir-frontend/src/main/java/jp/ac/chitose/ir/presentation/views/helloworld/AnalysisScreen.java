@@ -29,7 +29,6 @@ public class AnalysisScreen extends VerticalLayout implements HasUrlParameter<St
     private final Grid<LectureData> grid = new Grid<>(LectureData.class, false);
     private final VerticalLayout scrollableContent = new VerticalLayout();
 
-    // APIレスポンス用のDTOクラス
     static class SearchResponse {
         public List<LectureData> results;
     }
@@ -49,7 +48,6 @@ public class AnalysisScreen extends VerticalLayout implements HasUrlParameter<St
         setupStaticLayout();
         setupGrid();
 
-        // 戻るボタン
         Button backButton = new Button("戻る", e -> getUI().ifPresent(ui -> ui.navigate("hello")));
         backButton.getStyle().set("position", "fixed").set("bottom", "20px").set("left", "20px").set("z-index", "10");
 
@@ -70,18 +68,20 @@ public class AnalysisScreen extends VerticalLayout implements HasUrlParameter<St
     }
 
     private void setupGrid() {
-        // グリッド（表）のカラム設定を行います
+        // カラム定義の修正
         grid.addColumn(d -> d.lectureName).setHeader("授業名").setFlexGrow(1);
         grid.addColumn(d -> d.lectureTeacher).setHeader("教員").setFlexGrow(1);
         grid.addColumn(d -> d.credits).setHeader("単位数").setWidth("100px");
-        grid.setAllRowsVisible(true); // スクロール領域内で全件表示させる設定
+
+        // 高さと幅を明示的に指定して描画を確実にします
+        grid.setHeight("500px");
+        grid.setWidthFull();
 
         scrollableContent.add(grid);
     }
 
     @Override
     public void setParameter(BeforeEvent event, @OptionalParameter String parameter) {
-        // URLのパラメータを取得します
         Location location = event.getLocation();
         QueryParameters queryParameters = location.getQueryParameters();
         Map<String, List<String>> parametersMap = queryParameters.getParameters();
@@ -97,8 +97,6 @@ public class AnalysisScreen extends VerticalLayout implements HasUrlParameter<St
 
     private void fetchLecturesFromApi(String grade, String semester, String dept) {
         try {
-            // 1. URLエンコードを正しく行います
-            // 全角文字や記号を、ブラウザが理解できる形式（%XX）に変換します
             String encodedGrade = java.net.URLEncoder.encode(grade, java.nio.charset.StandardCharsets.UTF_8);
             String encodedSemester = java.net.URLEncoder.encode(semester, java.nio.charset.StandardCharsets.UTF_8);
             String encodedDept = java.net.URLEncoder.encode(dept, java.nio.charset.StandardCharsets.UTF_8);
@@ -106,13 +104,10 @@ public class AnalysisScreen extends VerticalLayout implements HasUrlParameter<St
             String url = String.format("http://127.0.0.1:8000/grade/search?target_grade=%s&available_semester=%s&target_department=%s",
                     encodedGrade, encodedSemester, encodedDept);
 
-            // デバッグ用：変換後のURLをコンソールに出力して確認できるようにします
             System.out.println("Request URL: " + url);
 
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
-
-            // 2. 非同期ではなく同期的にレスポンスを待ちます
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
@@ -121,19 +116,13 @@ public class AnalysisScreen extends VerticalLayout implements HasUrlParameter<St
                 SearchResponse result = mapper.readValue(response.body(), SearchResponse.class);
 
                 if (result != null && result.results != null) {
-                    // 3. データをGridにセットします
-                    // VaadinのGridは、データのセット後に自動で再描画されます
-                    List<LectureData> lectures = result.results;
-                    System.out.println("取得件数: " + lectures.size());
-
-                    grid.setItems(lectures);
+                    System.out.println("取得件数: " + result.results.size());
+                    grid.setItems(result.results);
                 }
             } else {
                 System.out.println("APIエラー ステータスコード: " + response.statusCode());
             }
         } catch (Exception e) {
-            // 例外の内容を詳しく出力します
-            System.err.println("データ取得中にエラーが発生しました");
             e.printStackTrace();
         }
     }

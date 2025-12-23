@@ -32,10 +32,9 @@ public class HelloWorldView extends VerticalLayout {
 
     private final HelloService helloService;
     private final RadioButtonGroup<String> grade = new RadioButtonGroup<>();
-    private final RadioButtonGroup<String> semester = new RadioButtonGroup<>();
+    // semesterのフィールド定義を削除しました
     private final RadioButtonGroup<String> department = new RadioButtonGroup<>();
 
-    // APIレスポンス用DTOクラス
     static class MasterListResponse {
         public MasterListData data;
     }
@@ -51,11 +50,7 @@ public class HelloWorldView extends VerticalLayout {
 
     public HelloWorldView(HelloService helloService) {
         this.helloService = helloService;
-
-        // 1. UIの配置を先に行います（エラー時でも画面を表示させるため）
         setupLayout();
-
-        // 2. 外部データをロードします
         loadMasterListData();
     }
 
@@ -69,24 +64,24 @@ public class HelloWorldView extends VerticalLayout {
         grade.setLabel("学年を選択");
         grade.getStyle().set("position", "fixed").set("top", "250px").set("left", "20px");
 
-        semester.setLabel("学期を選択");
-        semester.getStyle().set("position", "fixed").set("top", "340px").set("left", "20px");
+        // semesterのラベル設定と配置処理を削除しました
 
         department.setLabel("学科を選択");
-        department.getStyle().set("position", "fixed").set("top", "430px").set("left", "20px");
+        // 配置場所を上に詰めました（340pxへ変更）
+        department.getStyle().set("position", "fixed").set("top", "340px").set("left", "20px");
 
         Button searchButton = new Button("検索！");
-        searchButton.getStyle().set("position", "fixed").set("top", "530px").set("left", "100px").set("z-index", "10");
+        // ボタンの配置場所も調整しました
+        searchButton.getStyle().set("position", "fixed").set("top", "440px").set("left", "100px").set("z-index", "10");
 
-        // ボタンクリック時のイベントリスナー
         searchButton.addClickListener(event -> handleSearch());
 
-        add(title, title2, grade, semester, department, searchButton);
+        // addメソッドの引数からsemesterを除外しました
+        add(title, title2, grade, department, searchButton);
     }
 
     private void loadMasterListData() {
         try {
-            // タイムアウトを設定したHttpClientを作成します
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(3))
                     .build();
@@ -100,14 +95,13 @@ public class HelloWorldView extends VerticalLayout {
 
             if (response.statusCode() == 200) {
                 ObjectMapper mapper = new ObjectMapper();
-                // クラスに定義していないJSONキーがあってもエラーにしない設定
                 mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
                 MasterListResponse result = mapper.readValue(response.body(), MasterListResponse.class);
 
                 if (result != null && result.data != null) {
                     grade.setItems(result.data.targetGrades);
-                    semester.setItems(result.data.availableSemesters);
+                    // semester.setItemsの呼び出しを削除しました
                     department.setItems(result.data.targetDepartments);
                 }
             } else {
@@ -121,28 +115,24 @@ public class HelloWorldView extends VerticalLayout {
 
     private void handleSearch() {
         String selectedGrade = grade.getValue();
-        String selectedSemester = semester.getValue();
+        // selectedSemesterの取得を削除しました
         String selectedDept = department.getValue();
 
-        // バリデーション：未選択チェック
-        if (selectedGrade == null || selectedSemester == null || selectedDept == null) {
+        // バリデーションからselectedSemesterを除外しました
+        if (selectedGrade == null || selectedDept == null) {
             showNotification("条件を入力してください", NotificationVariant.LUMO_ERROR);
             return;
         }
 
-        // バリデーション：データ不在条件（例として理工学部以外かつ特定の学年）
-        boolean isTargetPeriod = "1".equals(selectedGrade) || ("2".equals(selectedGrade) && "3".equals(selectedSemester));
-        boolean isNotScienceAndEng = !"理工学部".equals(selectedDept);
-
-        if (isTargetPeriod && isNotScienceAndEng) {
+        // 学期に依存していたバリデーション論理を削除し、簡略化しました
+        if ("1".equals(selectedGrade) && !"理工学部".equals(selectedDept)) {
             showNotification("当てはまるデータがありません", NotificationVariant.LUMO_ERROR);
             return;
         }
 
-        // AnalysisScreenへ遷移し、クエリパラメータで選択値を渡します
+        // クエリパラメータからsemesterを除外しました
         QueryParameters params = QueryParameters.simple(Map.of(
                 "grade", selectedGrade,
-                "semester", selectedSemester,
                 "dept", selectedDept
         ));
         getUI().ifPresent(ui -> ui.navigate("AnalysisScreen", params));
