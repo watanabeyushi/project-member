@@ -97,13 +97,22 @@ public class AnalysisScreen extends VerticalLayout implements HasUrlParameter<St
 
     private void fetchLecturesFromApi(String grade, String semester, String dept) {
         try {
-            // FastAPIの検索エンドポイントへリクエストを送信します
-            // URLエンコードを考慮し、パラメータを連結します
+            // 1. URLエンコードを正しく行います
+            // 全角文字や記号を、ブラウザが理解できる形式（%XX）に変換します
+            String encodedGrade = java.net.URLEncoder.encode(grade, java.nio.charset.StandardCharsets.UTF_8);
+            String encodedSemester = java.net.URLEncoder.encode(semester, java.nio.charset.StandardCharsets.UTF_8);
+            String encodedDept = java.net.URLEncoder.encode(dept, java.nio.charset.StandardCharsets.UTF_8);
+
             String url = String.format("http://127.0.0.1:8000/grade/search?target_grade=%s&available_semester=%s&target_department=%s",
-                    grade, semester, dept.replace(" ", "%20"));
+                    encodedGrade, encodedSemester, encodedDept);
+
+            // デバッグ用：変換後のURLをコンソールに出力して確認できるようにします
+            System.out.println("Request URL: " + url);
 
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
+
+            // 2. 非同期ではなく同期的にレスポンスを待ちます
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
@@ -111,12 +120,20 @@ public class AnalysisScreen extends VerticalLayout implements HasUrlParameter<St
                 mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
                 SearchResponse result = mapper.readValue(response.body(), SearchResponse.class);
 
-                // 取得したデータをグリッドに反映します
-                if (result.results != null) {
-                    grid.setItems(result.results);
+                if (result != null && result.results != null) {
+                    // 3. データをGridにセットします
+                    // VaadinのGridは、データのセット後に自動で再描画されます
+                    List<LectureData> lectures = result.results;
+                    System.out.println("取得件数: " + lectures.size());
+
+                    grid.setItems(lectures);
                 }
+            } else {
+                System.out.println("APIエラー ステータスコード: " + response.statusCode());
             }
         } catch (Exception e) {
+            // 例外の内容を詳しく出力します
+            System.err.println("データ取得中にエラーが発生しました");
             e.printStackTrace();
         }
     }

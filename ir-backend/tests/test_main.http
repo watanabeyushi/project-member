@@ -94,3 +94,6 @@ GET http://127.0.0.1:8000/grade/helloworld
 
 ###
 GET http://127.0.0.1:8000/grade/master_list
+
+###
+GET http://127.0.0.1:8000/grade/search

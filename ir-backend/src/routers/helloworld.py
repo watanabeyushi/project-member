@@ -135,6 +135,47 @@ async def get_master_list(db_connection=Depends(irweb_data)):
 
         }
 
+        @router.get("/grade/search")
+        async def search_grade(
+                target_grade: str,
+                available_semester: str,
+                target_department: str,
+                db_connection=Depends(irweb_data)
+        ):
+            try:
+                # データベースから「学年」「学期」「学科」の3条件でフィルタリングして取得します
+                df = await db_connection.query(
+                    "grade_new",
+                    "lecture_name",
+                    "lecture_teacher",
+                    "number_credits_course",
+                    where_and={
+                        "target_grade": target_grade,
+                        "available_semester": available_semester,
+                        "target_department": target_department
+                    }
+                )
+
+                # 該当データがない場合は、空のリストを返します
+                if df is None or df.empty:
+                    return {"results": []}
+
+                # 重複する授業名を排除します（同じ授業が複数レコードある場合を想定）
+                df = df.drop_duplicates(subset=["lecture_name"])
+
+                # Java側のLectureDataクラスのフィールド名と一致するように整形して返します
+                results = []
+                for _, row in df.iterrows():
+                    results.append({
+                        "lecture_name": str(row["lecture_name"]) if pd.notnull(row["lecture_name"]) else "",
+                        "lecture_teacher": str(row["lecture_teacher"]) if pd.notnull(row["lecture_teacher"]) else "",
+                        "number_credits_course": str(int(float(row["number_credits_course"]))) if pd.notnull(
+                            row["number_credits_course"]) else "0"
+                    })
+
+                return {"results": results}
+            except Exception as e:
+                return {"error": "Search failed", "detail": str(e)}
         return {"data": result}
 
     except Exception as e:
