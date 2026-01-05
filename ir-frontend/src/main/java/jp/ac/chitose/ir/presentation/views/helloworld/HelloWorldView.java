@@ -32,13 +32,13 @@ public class HelloWorldView extends VerticalLayout {
 
     private final HelloService helloService;
     private final RadioButtonGroup<String> grade = new RadioButtonGroup<>();
-    // semesterのフィールド定義を削除しました
     private final RadioButtonGroup<String> department = new RadioButtonGroup<>();
 
+    //APIからの返答JSONを格納
     static class MasterListResponse {
         public MasterListData data;
     }
-
+    //JSONデータのキー名とjavaの変数名を同期
     static class MasterListData {
         @JsonProperty("target_grades")
         public List<String> targetGrades;
@@ -54,6 +54,7 @@ public class HelloWorldView extends VerticalLayout {
         loadMasterListData();
     }
 
+    //ボタン配置
     private void setupLayout() {
         H1 title = new H1("CIST-IR");
         title.getStyle().set("position", "fixed").set("top", "100px").set("left", "20px").set("z-index", "10");
@@ -64,35 +65,34 @@ public class HelloWorldView extends VerticalLayout {
         grade.setLabel("学年を選択");
         grade.getStyle().set("position", "fixed").set("top", "250px").set("left", "20px");
 
-        // semesterのラベル設定と配置処理を削除しました<-
-
         department.setLabel("学科を選択");
-        // 配置場所を上に詰めました（340pxへ変更）
         department.getStyle().set("position", "fixed").set("top", "340px").set("left", "20px");
 
         Button searchButton = new Button("検索！");
-        // ボタンの配置場所も調整しました
         searchButton.getStyle().set("position", "fixed").set("top", "440px").set("left", "100px").set("z-index", "10");
 
         searchButton.addClickListener(event -> handleSearch());
 
-        // addメソッドの引数からsemesterを除外しました
         add(title, title2, grade, department, searchButton);
     }
 
     private void loadMasterListData() {
         try {
+            //通信を行う主体(通信全体に関わる共通の設定)
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(3))
                     .build();
 
+            //通信機に対して渡す指示書
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create("http://127.0.0.1:8000/grade/master_list"))
                     .GET()
                     .build();
 
+            //client（通信機）を使って、request（指示書）の内容を送信する
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
+            //レスポンスのステータスコードが成功だった
             if (response.statusCode() == 200) {
                 ObjectMapper mapper = new ObjectMapper();
                 mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -101,8 +101,10 @@ public class HelloWorldView extends VerticalLayout {
 
                 if (result != null && result.data != null) {
                     grade.setItems(result.data.targetGrades);
-                    // semester.setItemsの呼び出しを削除しました
                     department.setItems(result.data.targetDepartments);
+                }
+                else{
+                    showNotification("データが存在しませんでした。", NotificationVariant.LUMO_CONTRAST);
                 }
             } else {
                 showNotification("APIサーバーエラー: " + response.statusCode(), NotificationVariant.LUMO_ERROR);
@@ -115,26 +117,24 @@ public class HelloWorldView extends VerticalLayout {
 
     private void handleSearch() {
         String selectedGrade = grade.getValue();
-        // selectedSemesterの取得を削除しました
         String selectedDept = department.getValue();
 
-        // バリデーションからselectedSemesterを除外しました
         if (selectedGrade == null || selectedDept == null) {
             showNotification("条件を入力してください", NotificationVariant.LUMO_ERROR);
             return;
         }
 
-        // 学期に依存していたバリデーション論理を削除し、簡略化しました
         if ("1".equals(selectedGrade) && !"理工学部".equals(selectedDept)) {
             showNotification("当てはまるデータがありません", NotificationVariant.LUMO_ERROR);
             return;
         }
 
-        // クエリパラメータからsemesterを除外しました
+        //URLパラメータ形式のオブジェクトを生成
         QueryParameters params = QueryParameters.simple(Map.of(
                 "grade", selectedGrade,
                 "dept", selectedDept
         ));
+        //画面遷移を行う
         getUI().ifPresent(ui -> ui.navigate("AnalysisScreen", params));
     }
 
