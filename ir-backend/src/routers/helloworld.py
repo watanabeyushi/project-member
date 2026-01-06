@@ -67,13 +67,16 @@ async def helloworld_grade(
 @router.get("/grade/master_list")
 async def get_master_list(db_connection=Depends(irweb_data)):
     try:
+        # データベースへのクエリに 'compulsory_subjects' と 'available_year' を追加
         df = await db_connection.query("grade_new",
                                        "target_grade",
                                        "available_semester",
                                        "target_department",
                                        "lecture_name",
                                        "lecture_teacher",
-                                       "number_credits_course"
+                                       "number_credits_course",
+                                       "compulsory_subjects",  # 追加: 必修区分
+                                       "available_year"  # 追加: 開講年度
                                        )
     except Exception as e:
         return {"error": "Query failed", "detail": str(e)}
@@ -81,6 +84,7 @@ async def get_master_list(db_connection=Depends(irweb_data)):
     if df is None or df.empty:
         return {"data": {}, "message": "データベースにレコードが存在しません"}
 
+    # ユニークな値のリストを抽出するヘルパー関数（変更なし）
     def extract_unique_list(series, is_numeric=False):
         valid_data = series.dropna().astype(str).unique()
         processed_list = []
@@ -98,18 +102,22 @@ async def get_master_list(db_connection=Depends(irweb_data)):
         return sorted(list(set(processed_list)))
 
     try:
+        # レスポンスのJSONに新しいキーを追加
         result = {
             "target_grades": extract_unique_list(df["target_grade"], is_numeric=True),
             "available_semesters": extract_unique_list(df["available_semester"], is_numeric=True),
             "target_departments": extract_unique_list(df["target_department"]),
             "lecture_names": extract_unique_list(df["lecture_name"]),
             "lecture_teachers": extract_unique_list(df["lecture_teacher"]),
-            "number_credits_courses": extract_unique_list(df["number_credits_course"], is_numeric=True)
+            "number_credits_courses": extract_unique_list(df["number_credits_course"], is_numeric=True),
+
+            # 追加部分
+            "compulsory_subjects": extract_unique_list(df["compulsory_subjects"]),  # 必修区分（文字列扱い）
+            "available_years": extract_unique_list(df["available_year"], is_numeric=True)  # 開講年度（数値扱い）
         }
         return {"data": result}
     except Exception as e:
         return {"error": "Processing failed", "detail": str(e)}
-
 
 # ---------------------------------------------------------
 # 3. 授業検索エンドポイント（論理比較・不一致対策版）
