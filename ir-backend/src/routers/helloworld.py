@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 import pandas as pd
 from src.datasource import irweb_data
 from collections import Counter
@@ -119,70 +119,84 @@ async def get_master_list(db_connection=Depends(irweb_data)):
     except Exception as e:
         return {"error": "Processing failed", "detail": str(e)}
 
+
 # ---------------------------------------------------------
-# 3. 授業検索エンドポイント（論理比較・不一致対策版）
+# 3. 授業検索エンドポイント（修正版：重複削除を追加）
 # ---------------------------------------------------------
 @router.get("/grade/search")
 async def search_grade(
-        target_grade: str,
-        available_semester: str,
-        target_department: str,
+        grade: str = Query(..., description="学年 (allの場合は全件)"),
+        dept: str = Query(..., description="学科 (allの場合は全件)"),
+        classification: str = Query(..., description="必修区分 (allの場合は全件)"),
         db_connection=Depends(irweb_data)
 ):
     try:
-        # DB側の型（double precision）に依存した厳密比較を避けるため、一旦全件（必要なカラム）取得します。
+        # 1. データベースからデータ取得
         df = await db_connection.query(
             "grade_new",
             "lecture_name",
-            "lecture_teacher",
-            "number_credits_course",
+            "available_year",
             "target_grade",
-            "available_semester",
-            "target_department"
+            "target_department",
+            "compulsory_subjects",
+            "number_credits_course"
         )
 
         if df is None or df.empty:
-            return {"results": []}
+            return []
 
-        # double precision型 (3.0など) を文字列 ("3") に変換する関数です。
-        # これにより、DB上の 3.0 と Java側の "3" を論理的に一致させます。
+        # 2. フィルタリング準備
+        mask = pd.Series(True, index=df.index)
+
         def normalize(val):
+            if pd.isna(val): return ""
             try:
-                # float変換 -> int変換 -> 文字列変換により、3.000... を "3" に揃えます。
                 return str(int(float(val)))
             except:
                 return str(val).strip()
 
-        # Pandasの機能を利用して、Javaからの入力値と論理的に比較します。
-        # 学科名は前後の空白を除去して比較、学年と学期は正規化後の文字列で比較します。
-        mask = (
-                (df["target_grade"].apply(normalize) == str(target_grade)) &
-                (df["available_semester"].apply(normalize) == str(available_semester)) &
-                (df["target_department"].astype(str).str.strip() == target_department.strip())
-        )
+        # 3. 条件適用
+        if grade != "all":
+            mask &= (df["target_grade"].apply(normalize) == str(grade))
+
+        if dept != "all":
+            mask &= (df["target_department"].astype(str).str.strip() == dept.strip())
+
+        if classification != "all":
+            mask &= (df["compulsory_subjects"].astype(str).str.strip() == classification.strip())
 
         filtered_df = df[mask].copy()
 
         if filtered_df.empty:
-            # デバッグ用ログ：不一致時の条件をサーバー側のコンソールに出力します。
-            print(f"Mismatch: Grade={target_grade}, Sem={available_semester}, Dept={target_department}")
-            return {"results": []}
+            return []
 
-        # 授業名の重複を排除します。
-        filtered_df = filtered_df.drop_duplicates(subset=["lecture_name"])
+        # -----------------------------------------------------------
+        # 【修正ポイント】 重複データの削除
+        # 同じ科目名・年度・学科・学年・区分のデータは1つにまとめます
+        # -----------------------------------------------------------
+        filtered_df = filtered_df.drop_duplicates(subset=[
+            "lecture_name",
+            "available_year",
+            "target_grade",
+            "target_department",
+            "compulsory_subjects"
+        ])
 
-        # JavaのGrid用DTO形式に整形します。
+        # 5. 結果のJSON作成
         results = []
         for _, row in filtered_df.iterrows():
             results.append({
-                "lecture_name": str(row["lecture_name"]) if pd.notnull(row["lecture_name"]) else "",
-                "lecture_teacher": str(row["lecture_teacher"]) if pd.notnull(row["lecture_teacher"]) else "",
-                "number_credits_course": normalize(row["number_credits_course"])
+                "subject_name": str(row["lecture_name"]) if pd.notnull(row["lecture_name"]) else "",
+                "year": int(row["available_year"]) if pd.notnull(row["available_year"]) else 0,
+                "target_grade": normalize(row["target_grade"]),
+                "department": str(row["target_department"]) if pd.notnull(row["target_department"]) else "",
+                "classification": str(row["compulsory_subjects"]) if pd.notnull(row["compulsory_subjects"]) else "",
+                "credits": int(float(row["number_credits_course"])) if pd.notnull(row["number_credits_course"]) else 0
             })
 
-        print(f"Success: Found {len(results)} items")
-        return {"results": results}
+        print(f"Search success: {len(results)} records found.")
+        return results
 
     except Exception as e:
         print(f"Error in search_grade: {str(e)}")
-        return {"error": "Search failed", "detail": str(e)}
+        return []
