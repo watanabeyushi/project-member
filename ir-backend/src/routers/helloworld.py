@@ -6,8 +6,9 @@ from typing import Optional
 
 router = APIRouter()
 
+
 # ---------------------------------------------------------
-# 1. 授業詳細（成績分布など）を取得するエンドポイント
+# 1. 授業詳細エンドポイント
 # ---------------------------------------------------------
 @router.get("/grade/helloworld")
 async def helloworld_grade(
@@ -24,12 +25,35 @@ async def helloworld_grade(
                                        "number_credits_course",
                                        "attendance",
                                        "grading",
+                                       "available_year",
+                                       "compulsory_subjects",
                                        where_and={"lecture_name": lecture_name})
     except Exception as e:
         return {"error": "Query failed", "detail": str(e)}
 
     if df is None or df.empty:
+        print(f"DEBUG: Data is empty for {lecture_name}")  # 空の場合もログに出す
         return {"data": {}, "message": f"No data found for lecture: {lecture_name}"}
+
+    # =========================================================
+    # ▼▼▼ デバッグ用コード追加 ▼▼▼
+    # =========================================================
+    print("\n" + "=" * 30)
+    print(f"DEBUG: Data for '{lecture_name}'")
+    print(f"Total Rows: {len(df)}")
+
+    # attendanceカラムのデータ型を確認
+    print(f"Attendance Dtype: {df['attendance'].dtype}")
+
+    # attendanceに入っているユニークな値を確認（変な値が混じっていないか）
+    print("Unique values in 'attendance':")
+    print(df['attendance'].unique())
+
+    # attendance と grading の組み合わせを最初の10行だけ表示
+    print("Top 10 rows (attendance vs grading):")
+    print(df[['attendance', 'grading']].head(10))
+    print("=" * 30 + "\n")
+    # =========================================================
 
     try:
         grading_counts = dict(Counter(df["grading"].values))
@@ -46,6 +70,14 @@ async def helloworld_grade(
         def safe_str(val):
             return str(val) if pd.notnull(val) else ""
 
+        # クロス集計
+        cross_tab = pd.crosstab(df['attendance'], df['grading'])
+        crosstab_data = cross_tab.to_dict(orient='index')
+
+        # クロス集計結果もデバッグ表示
+        print("DEBUG: Generated Crosstab Data:")
+        print(crosstab_data)
+
         result = {
             "grading_distribution": grading_counts,
             "lecture_teacher": safe_str(row["lecture_teacher"]),
@@ -54,10 +86,15 @@ async def helloworld_grade(
             "target_grade": str(safe_int(row["target_grade"])),
             "available_semester": str(safe_int(row["available_semester"])),
             "number_credits_course": safe_float(row["number_credits_course"]),
-            "attendance": safe_int(row["attendance"])
+            "attendance": safe_int(row["attendance"]),
+            "year": safe_int(row["available_year"]),
+            "classification": safe_str(row["compulsory_subjects"]),
+            "crosstab": crosstab_data
         }
         return {"data": result}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return {"error": "Processing failed", "detail": str(e)}
 
 

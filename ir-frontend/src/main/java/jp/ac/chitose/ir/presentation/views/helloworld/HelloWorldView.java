@@ -74,7 +74,10 @@ public class HelloWorldView extends VerticalLayout {
 
     public HelloWorldView(HelloService helloService) {
         this.helloService = helloService;
-        setSizeFull();
+
+        // 画面幅いっぱい、高さは内容なり
+        setWidthFull();
+
         setupLayout();
         loadMasterListData();
     }
@@ -83,23 +86,50 @@ public class HelloWorldView extends VerticalLayout {
         H1 title = new H1("CIST-IR");
         H2 title2 = new H2("成績と他要因の関係");
 
-        // 検索条件
+        // ラベル設定
         grade.setLabel("学年");
         department.setLabel("学科");
         classification.setLabel("必修区分");
 
-        Button searchButton = new Button("検索！");
-        searchButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        searchButton.addClickListener(event -> handleSearch());
+        // 変更リスナー（即時反映）
+        grade.addValueChangeListener(e -> { if (e.isFromClient()) updateSubjectList(); });
+        department.addValueChangeListener(e -> { if (e.isFromClient()) updateSubjectList(); });
+        classification.addValueChangeListener(e -> { if (e.isFromClient()) updateSubjectList(); });
 
-        HorizontalLayout filters = new HorizontalLayout();
-        filters.add(grade, department, classification, searchButton);
-        filters.setDefaultVerticalComponentAlignment(Alignment.END);
+        // --- リセットボタンの作成 ---
+        Button resetButton = new Button("条件リセット");
+        // 見た目を少し控えめにするなどのスタイル調整（お好みで）
+        resetButton.addThemeVariants(ButtonVariant.LUMO_SMALL);
 
-        // グリッドの設定
+        // クリック時の動作
+        resetButton.addClickListener(e -> {
+            // すべてのラジオボタンを「全体」に戻す
+            grade.setValue("全体");
+            department.setValue("全体");
+            classification.setValue("全体");
+
+            // 値をセットしただけでは isFromClient() が false になりリスナーが動かないため、
+            // 明示的に検索メソッドを呼び出して画面を更新する
+            updateSubjectList();
+        });
+
+        // --- レイアウト ---
+
+        // 1段目: 学年、必修区分、そしてリセットボタンを横並びにする
+        HorizontalLayout row1 = new HorizontalLayout(grade, classification, resetButton);
+        row1.setDefaultVerticalComponentAlignment(Alignment.END); // 下揃えにして高さを合わせる
+
+        // 2段目: 学科
+        HorizontalLayout row2 = new HorizontalLayout(department);
+        row2.setDefaultVerticalComponentAlignment(Alignment.END);
+
+        VerticalLayout filters = new VerticalLayout(row1, row2);
+        filters.setPadding(false);
+        filters.setSpacing(false);
+
+        // グリッド設定
         configureGrid();
 
-        // 配置
         add(title, title2, filters, grid);
     }
 
@@ -118,16 +148,14 @@ public class HelloWorldView extends VerticalLayout {
             return button;
         }).setHeader("科目名").setSortable(true).setAutoWidth(true);
 
-        // 【追加】開講年度カラム
         grid.addColumn(SubjectData::getYear).setHeader("開講年度").setSortable(true);
-
-        // その他のカラム
         grid.addColumn(SubjectData::getTargetGrade).setHeader("対象学年").setSortable(true);
         grid.addColumn(SubjectData::getDepartment).setHeader("対象学科").setSortable(true).setAutoWidth(true);
         grid.addColumn(SubjectData::getClassification).setHeader("必選別").setSortable(true);
         grid.addColumn(SubjectData::getCredits).setHeader("単位数").setSortable(true);
 
-        grid.setHeightFull();
+        // 全行表示設定
+        grid.setAllRowsVisible(true);
         grid.setWidthFull();
     }
 
@@ -148,7 +176,11 @@ public class HelloWorldView extends VerticalLayout {
                     setItemsWithAll(grade, result.data.targetGrades);
                     setItemsWithAll(department, result.data.targetDepartments);
                     setItemsWithAll(classification, result.data.compulsorySubjects);
+
+                    updateSubjectList();
                 }
+            } else {
+                showNotification("APIエラー: " + response.statusCode(), NotificationVariant.LUMO_ERROR);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -164,13 +196,12 @@ public class HelloWorldView extends VerticalLayout {
         group.setValue("全体");
     }
 
-    private void handleSearch() {
+    private void updateSubjectList() {
         String selectedGrade = grade.getValue();
         String selectedDept = department.getValue();
         String selectedClass = classification.getValue();
 
         if (selectedGrade == null || selectedDept == null || selectedClass == null) {
-            showNotification("条件を選択してください", NotificationVariant.LUMO_ERROR);
             return;
         }
 
@@ -203,12 +234,6 @@ public class HelloWorldView extends VerticalLayout {
 
                 grid.setItems(subjects);
 
-                if (subjects.isEmpty()) {
-                    showNotification("該当データなし", NotificationVariant.LUMO_CONTRAST);
-                } else {
-                    showNotification(subjects.size() + "件表示しました", NotificationVariant.LUMO_SUCCESS);
-                }
-
             } else {
                 showNotification("検索エラー: " + response.statusCode(), NotificationVariant.LUMO_ERROR);
             }
@@ -219,8 +244,8 @@ public class HelloWorldView extends VerticalLayout {
     }
 
     private void handleSubjectClick(SubjectData subject) {
-        showNotification(subject.getSubjectName() + " (" + subject.getYear() + ") の詳細を開きます", NotificationVariant.LUMO_PRIMARY);
-        // ここに画面遷移ロジックを記述
+        // 詳細画面へ遷移
+        getUI().ifPresent(ui -> ui.navigate(AnalysisScreen.class, subject.getSubjectName()));
     }
 
     private void showNotification(String message, NotificationVariant variant) {
