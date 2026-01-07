@@ -110,7 +110,7 @@ public class AnalysisScreen extends VerticalLayout implements HasUrlParameter<St
         backButton.getStyle()
                 .set("position", "fixed")
                 .set("bottom", "20px")
-                .set("left", "20px")
+                .set("left", "50px")
                 .set("z-index", "30");
 
         // コンポーネントをルートに追加

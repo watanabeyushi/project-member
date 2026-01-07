@@ -104,9 +104,9 @@ public class HelloWorldView extends VerticalLayout {
         // クリック時の動作
         resetButton.addClickListener(e -> {
             // すべてのラジオボタンを「全体」に戻す
-            grade.setValue("全体");
-            department.setValue("全体");
-            classification.setValue("全体");
+            grade.setValue("全て");
+            department.setValue("全て");
+            classification.setValue("全て");
 
             // 値をセットしただけでは isFromClient() が false になりリスナーが動かないため、
             // 明示的に検索メソッドを呼び出して画面を更新する
@@ -190,10 +190,10 @@ public class HelloWorldView extends VerticalLayout {
 
     private void setItemsWithAll(RadioButtonGroup<String> group, List<String> items) {
         List<String> list = new ArrayList<>();
-        list.add("全体");
+        list.add("全て");
         if (items != null) list.addAll(items);
         group.setItems(list);
-        group.setValue("全体");
+        group.setValue("全て");
     }
 
     private void updateSubjectList() {
@@ -206,9 +206,9 @@ public class HelloWorldView extends VerticalLayout {
         }
 
         try {
-            String paramGrade = selectedGrade.equals("全体") ? "all" : URLEncoder.encode(selectedGrade, StandardCharsets.UTF_8);
-            String paramDept = selectedDept.equals("全体") ? "all" : URLEncoder.encode(selectedDept, StandardCharsets.UTF_8);
-            String paramClass = selectedClass.equals("全体") ? "all" : URLEncoder.encode(selectedClass, StandardCharsets.UTF_8);
+            String paramGrade = selectedGrade.equals("全て") ? "all" : URLEncoder.encode(selectedGrade, StandardCharsets.UTF_8);
+            String paramDept = selectedDept.equals("全て") ? "all" : URLEncoder.encode(selectedDept, StandardCharsets.UTF_8);
+            String paramClass = selectedClass.equals("全て") ? "all" : URLEncoder.encode(selectedClass, StandardCharsets.UTF_8);
 
             String apiUrl = String.format("http://127.0.0.1:8000/grade/search?grade=%s&dept=%s&classification=%s",
                     paramGrade, paramDept, paramClass);
